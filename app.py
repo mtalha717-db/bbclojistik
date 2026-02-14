@@ -108,23 +108,3 @@ with st.sidebar:
     try: st.image(LOGO_URL, use_container_width=True)
     except: st.header("🚛 BABACANLAR")
     st.markdown('</div>', unsafe_allow_html=True)
-    st.write("---")
-    
-    secilen_sayfa = "🔍 KARGO TAKİP"
-
-    if st.session_state['admin_logged_in']:
-        kullanici_adi = st.session_state['admin_name'].capitalize()
-        st.success(f"👤 Yönetici: {kullanici_adi}")
-        secilen_sayfa = st.radio("PANEL", ["🔍 KARGO TAKİP", "⚙️ OPERASYON MERKEZİ"])
-        st.write("---")
-        if st.button("Çıkış Yap 🔒"):
-            st.session_state['admin_logged_in'] = False
-            st.rerun()     
-    else:
-        st.info("Müşteri Paneli Aktif")
-        with st.expander("Personel Girişi 🔐"):
-            kullanici = st.text_input("Kullanıcı Adı").lower()
-            sifre = st.text_input("Şifre", type="password")
-            if st.button("Giriş Yap"):
-                if kullanici in KULLANICILAR and KULLANICILAR[kullanici] == sifre:
-                    st.session_state['admin_logged_in']
