@@ -8,103 +8,86 @@ from streamlit_gsheets import GSheetsConnection
 st.set_page_config(page_title="Babacanlar Lojistik", page_icon="🚛", layout="wide")
 LOGO_URL = "https://babacanlarkargo.com.tr/wp-content/uploads/2021/01/babacanlar-logo.png"
 
-# --- KULLANICI HESAPLARI ---
+# --- KULLANICILAR ---
 KULLANICILAR = {
     "veysel": "5456",
     "mehmet": "6567",
     "kenan":  "7678"
 }
 
-# Oturum Durumu
+# --- OTURUM ---
 if 'admin_logged_in' not in st.session_state:
     st.session_state['admin_logged_in'] = False
 if 'admin_name' not in st.session_state:
     st.session_state['admin_name'] = ""
 
-# --- SABİT VERİLER (GÜNCELLENDİ) ---
+# --- SABİT VERİLER ---
 ROTA = {
-    "Gaziantep Çıkış": {"lat": 37.0662, "lon": 37.3833},
-    "İstanbul Çıkış":  {"lat": 41.0082, "lon": 28.9784},
-    "Aktarma Noktası": {"lat": 39.9334, "lon": 32.8597}
+    "Gaziantep": {"lat": 37.0662, "lon": 37.3833},
+    "İstanbul":  {"lat": 41.0082, "lon": 28.9784},
+    "Aktarma":   {"lat": 39.9334, "lon": 32.8597}
 }
 
+BASLANGIC_SECENEKLERI = ["Gaziantep Çıkış", "İstanbul Çıkış"]
+
 DURUMLAR = [
-    "Yükleniyor", 
-    "Yola Çıktı", 
-    "Yolda", 
-    "Dağıtım Merkezinde", 
-    "Dağıtımda", 
-    "Teslim Edildi", 
-    "İptal Edildi"
+    "Yükleniyor", "Yolda", "Dağıtım Merkezinde", 
+    "Dağıtımda", "Teslim Edildi", "İptal Edildi"
 ]
 
-# --- 2. CSS TASARIM (KESİN ÇÖZÜM) ---
+# --- 2. CSS TASARIM ---
 st.markdown("""
     <style>
-    /* Ana Arkaplan */
     .stApp { background-color: #0e1117; color: white; }
     [data-testid="stSidebar"] { background-color: #001529; border-right: 3px solid #e30613; }
     
-    /* GİRİŞ KUTULARI (INPUTS) - ZORLA BEYAZ ARKAPLAN VE SİYAH YAZI */
+    /* GİRİŞ KUTULARI (Siyah Arkaplan) */
     input[type="text"], input[type="password"] {
-        background-color: #ffffff !important;
-        color: #000000 !important;
-        border: 1px solid #ccc !important;
+        background-color: #1a1c24 !important;
+        color: white !important;
+        border: 1px solid #444 !important;
     }
     
-    /* SEÇİM KUTULARI (SELECTBOX) */
+    /* SEÇİM KUTULARI */
     div[data-baseweb="select"] > div {
-        background-color: #ffffff !important;
-        color: #000000 !important;
-        border: 1px solid #ccc !important;
+        background-color: #1a1c24 !important;
+        color: white !important;
+        border: 1px solid #444 !important;
     }
+    div[data-baseweb="select"] span { color: white !important; }
     
-    /* AÇILIR MENÜ İÇİNDEKİ YAZILAR (Dropdown Items) */
-    li[role="option"] {
-        background-color: #ffffff !important;
-        color: #000000 !important;
-    }
-    div[data-baseweb="popover"] {
-        background-color: #ffffff !important;
-    }
+    /* MENÜLER */
+    ul[data-baseweb="menu"] { background-color: #1a1c24 !important; }
+    li[role="option"] { color: white !important; }
     
     /* BUTONLAR */
     div.stButton > button { 
         background-color: #e30613 !important; 
         color: white !important; 
         border: 2px solid #e30613 !important; 
-        width: 100%; 
-        font-weight: bold;
+        width: 100%; font-weight: bold;
     }
     div.stButton > button:hover { 
         background-color: white !important; 
         color: #e30613 !important; 
-        border: 2px solid #e30613 !important;
+        border: 2px solid white !important;
     }
     
     /* METİNLER */
     h1, h2, h3, p, label, span { color: white !important; }
-    
-    /* Seçim kutusu içindeki seçili metin (Bazen beyaz kalıyor, onu siyah yapıyoruz) */
-    div[data-baseweb="select"] span {
-        color: #000000 !important;
-    }
+    div[data-testid="stMetric"] { background-color: #1a1c24; border-left: 5px solid #e30613; border-radius: 5px; padding: 10px; }
     </style>
     """, unsafe_allow_html=True)
 
-# --- 3. GOOGLE SHEETS BAĞLANTISI ---
+# --- 3. BAĞLANTI ---
 conn = st.connection("gsheets", type=GSheetsConnection)
 
 def veri_yukle():
     try:
         df = conn.read(worksheet="Sayfa1", ttl="0")
-        # Yeni sütunlar eklendi: telefon, email
-        expected_cols = ['takip_kodu', 'alici', 'telefon', 'email', 'plaka', 'durum', 'konum', 'lat', 'lon', 'kayit_tarihi']
-        for col in expected_cols:
-            if col not in df.columns:
-                df[col] = ""
-        
-        # .0 Temizliği
+        cols = ['takip_kodu', 'alici', 'telefon', 'email', 'plaka', 'durum', 'konum', 'lat', 'lon', 'kayit_tarihi']
+        for c in cols:
+            if c not in df.columns: df[c] = ""
         df['takip_kodu'] = df['takip_kodu'].astype(str).str.replace(r'\.0$', '', regex=True)
         return df
     except:
@@ -119,7 +102,7 @@ def tum_veriyi_guncelle(df):
     except Exception as e:
         st.error(f"Hata: {e}")
 
-# --- 4. ARAYÜZ ---
+# --- 4. KENAR ÇUBUĞU ---
 with st.sidebar:
     st.markdown('<div style="background-color:white; padding:10px; border-radius:10px; text-align:center;">', unsafe_allow_html=True)
     try: st.image(LOGO_URL, use_container_width=True)
@@ -136,7 +119,6 @@ with st.sidebar:
         st.write("---")
         if st.button("Çıkış Yap 🔒"):
             st.session_state['admin_logged_in'] = False
-            st.session_state['admin_name'] = ""
             st.rerun()     
     else:
         st.info("Müşteri Paneli Aktif")
@@ -145,117 +127,4 @@ with st.sidebar:
             sifre = st.text_input("Şifre", type="password")
             if st.button("Giriş Yap"):
                 if kullanici in KULLANICILAR and KULLANICILAR[kullanici] == sifre:
-                    st.session_state['admin_logged_in'] = True
-                    st.session_state['admin_name'] = kullanici
-                    st.rerun()
-                else:
-                    st.error("Hatalı Bilgi!")
-
-# --- 5. İÇERİK ---
-
-if secilen_sayfa == "🔍 KARGO TAKİP":
-    st.title("📦 Kargo Takip Sistemi")
-    st.markdown("Gönderi durumunu sorgulamak için **12 haneli** takip kodunu giriniz.")
-    
-    t_no = st.text_input("Takip No", placeholder="Örn: 102938475610")
-    if st.button("SORGULA"):
-        df = veri_yukle()
-        if not df.empty:
-            t_no = t_no.strip()
-            res = df[df['takip_kodu'] == t_no]
-            if not res.empty:
-                k = res.iloc[0]
-                st.success(f"DURUM: {k['durum']}")
-                
-                # Müşteri sadece gerekli bilgileri görür (Telefon/Email gizli)
-                c1, c2, c3 = st.columns(3)
-                c1.metric("Alıcı", k['alici'])
-                c2.metric("Plaka", k['plaka'])
-                c3.metric("Konum", k['konum'])
-                
-                try:
-                    lat = float(str(k['lat']).replace(',', '.'))
-                    lon = float(str(k['lon']).replace(',', '.'))
-                    st.map(pd.DataFrame({'lat': [lat], 'lon': [lon]}))
-                except:
-                    st.warning("Harita verisi yok.")
-            else:
-                st.error("Kayıt bulunamadı.")
-        else:
-            st.error("Veri yok.")
-
-elif secilen_sayfa == "⚙️ OPERASYON MERKEZİ":
-    st.title(f"⚙️ Operasyon Merkezi - {st.session_state['admin_name'].capitalize()}")
-    df = veri_yukle()
-    
-    tab1, tab2, tab3, tab4 = st.tabs(["➕ Yeni Ekle", "🔄 Güncelle", "❌ Sil", "📋 Liste"])
-
-    # --- YENİ EKLE ---
-    with tab1:
-        with st.form("ekle_form", clear_on_submit=True):
-            col_a, col_b = st.columns(2)
-            with col_a:
-                ad = st.text_input("Müşteri Adı / Firma")
-                tel = st.text_input("Telefon No (05...)")
-            with col_b:
-                email = st.text_input("E-Posta Adresi")
-                pl = st.text_input("Plaka")
-            
-            cs = st.selectbox("Çıkış Noktası", list(ROTA.keys()))
-            
-            if st.form_submit_button("Kaydet"):
-                # 12 Haneli Takip Kodu
-                kod = str(random.randint(100000000000, 999999999999)) 
-                
-                yeni_satir = pd.DataFrame([{
-                    'takip_kodu': kod, 
-                    'alici': ad, 
-                    'telefon': tel,
-                    'email': email,
-                    'plaka': pl, 
-                    'durum': 'Yükleniyor', 
-                    'konum': cs, 
-                    'lat': ROTA[cs]['lat'], 
-                    'lon': ROTA[cs]['lon'], 
-                    'kayit_tarihi': time.strftime("%d.%m.%Y")
-                }])
-                guncel_df = pd.concat([df, yeni_satir], ignore_index=True)
-                tum_veriyi_guncelle(guncel_df)
-                st.info(f"YENİ TAKİP KODU: {kod}")
-
-    # --- GÜNCELLE ---
-    with tab2:
-        if not df.empty:
-            secenekler = df['takip_kodu'] + " - " + df['alici']
-            secilen = st.selectbox("Kargo Seç:", secenekler, key="gnc_slct")
-            
-            with st.form("gnc_form"):
-                col1, col2 = st.columns(2)
-                with col1:
-                    yeni_durum = st.selectbox("Yeni Durum", DURUMLAR)
-                with col2:
-                    yeni_konum = st.selectbox("Yeni Konum", list(ROTA.keys()))
-                
-                if st.form_submit_button("Güncellemeyi Kaydet"):
-                    secilen_kod = secilen.split(" - ")[0]
-                    idx = df[df['takip_kodu'] == secilen_kod].index[0]
-                    
-                    df.at[idx, 'durum'] = yeni_durum
-                    df.at[idx, 'konum'] = yeni_konum
-                    df.at[idx, 'lat'] = ROTA[yeni_konum]['lat']
-                    df.at[idx, 'lon'] = ROTA[yeni_konum]['lon']
-                    tum_veriyi_guncelle(df)
-
-    # --- SİL ---
-    with tab3:
-        if not df.empty:
-            with st.form("sil_form"):
-                sil_secenek = st.selectbox("Silinecek Kayıt:", df['takip_kodu'] + " - " + df['alici'])
-                if st.form_submit_button("🗑️ Kaydı Sil"):
-                    kod_sil = sil_secenek.split(" - ")[0]
-                    yeni_df = df[df['takip_kodu'] != kod_sil]
-                    tum_veriyi_guncelle(yeni_df)
-
-    # --- LİSTE ---
-    with tab4:
-        st.dataframe(df, use_container_width=True)
+                    st.session_state['admin_logged_in']
