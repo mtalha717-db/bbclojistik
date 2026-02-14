@@ -6,7 +6,7 @@ from streamlit_gsheets import GSheetsConnection
 
 # --- 1. AYARLAR ---
 st.set_page_config(page_title="Babacanlar Lojistik", page_icon="🚛", layout="wide")
-LOGO_URL = "https://babacanlarkargo.com.tr/wp-content/uploads/2021/01/babacanlar-logo.png"
+LOGO_URL = "https://www.argembilisim.com/wp-content/uploads/2025/09/babacanlarkargo-300x300.png"
 
 # --- KULLANICILAR ---
 KULLANICILAR = {
