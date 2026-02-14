@@ -21,11 +21,11 @@ if 'admin_logged_in' not in st.session_state:
 if 'admin_name' not in st.session_state:
     st.session_state['admin_name'] = ""
 
-# --- SABİT VERİLER ---
+# --- SABİT VERİLER (GÜNCELLENDİ) ---
 ROTA = {
-    "Gaziantep (Çıkış)": {"lat": 37.0662, "lon": 37.3833},
-    "Aktarma":           {"lat": 39.9334, "lon": 32.8597},
-    "İstanbul (Varış)":  {"lat": 41.0082, "lon": 28.9784}
+    "Gaziantep Çıkış": {"lat": 37.0662, "lon": 37.3833},
+    "İstanbul Çıkış":  {"lat": 41.0082, "lon": 28.9784},
+    "Aktarma Noktası": {"lat": 39.9334, "lon": 32.8597}
 }
 
 DURUMLAR = [
@@ -38,26 +38,57 @@ DURUMLAR = [
     "İptal Edildi"
 ]
 
-# --- 2. CSS TASARIM ---
+# --- 2. CSS TASARIM (KESİN ÇÖZÜM) ---
 st.markdown("""
     <style>
+    /* Ana Arkaplan */
     .stApp { background-color: #0e1117; color: white; }
     [data-testid="stSidebar"] { background-color: #001529; border-right: 3px solid #e30613; }
-    .stTextInput input, .stSelectbox div[data-baseweb="select"] > div {
-        background-color: white !important; color: black !important; font-weight: bold; border-radius: 5px;
+    
+    /* GİRİŞ KUTULARI (INPUTS) - ZORLA BEYAZ ARKAPLAN VE SİYAH YAZI */
+    input[type="text"], input[type="password"] {
+        background-color: #ffffff !important;
+        color: #000000 !important;
+        border: 1px solid #ccc !important;
     }
-    ul[data-baseweb="menu"] { background-color: white !important; }
-    ul[data-baseweb="menu"] li { color: black !important; }
+    
+    /* SEÇİM KUTULARI (SELECTBOX) */
+    div[data-baseweb="select"] > div {
+        background-color: #ffffff !important;
+        color: #000000 !important;
+        border: 1px solid #ccc !important;
+    }
+    
+    /* AÇILIR MENÜ İÇİNDEKİ YAZILAR (Dropdown Items) */
+    li[role="option"] {
+        background-color: #ffffff !important;
+        color: #000000 !important;
+    }
+    div[data-baseweb="popover"] {
+        background-color: #ffffff !important;
+    }
+    
+    /* BUTONLAR */
     div.stButton > button { 
-        background-color: #e30613; color: white; border: 2px solid #e30613; width: 100%; border-radius: 5px; font-weight: bold; transition: all 0.3s ease;
+        background-color: #e30613 !important; 
+        color: white !important; 
+        border: 2px solid #e30613 !important; 
+        width: 100%; 
+        font-weight: bold;
     }
     div.stButton > button:hover { 
-        background-color: white !important; color: #e30613 !important; border: 2px solid #e30613 !important;
+        background-color: white !important; 
+        color: #e30613 !important; 
+        border: 2px solid #e30613 !important;
     }
-    h1, h2, h3, p, label, .stMarkdown, .stRadio label { color: white !important; }
-    div[data-testid="stMetric"] { background-color: #1a1c24; border-left: 5px solid #e30613; border-radius: 5px; padding: 10px; }
-    div[data-testid="stMetricLabel"] { color: #e30613 !important; }
-    div[data-testid="stMetricValue"] { color: white !important; }
+    
+    /* METİNLER */
+    h1, h2, h3, p, label, span { color: white !important; }
+    
+    /* Seçim kutusu içindeki seçili metin (Bazen beyaz kalıyor, onu siyah yapıyoruz) */
+    div[data-baseweb="select"] span {
+        color: #000000 !important;
+    }
     </style>
     """, unsafe_allow_html=True)
 
@@ -67,17 +98,17 @@ conn = st.connection("gsheets", type=GSheetsConnection)
 def veri_yukle():
     try:
         df = conn.read(worksheet="Sayfa1", ttl="0")
-        expected_cols = ['takip_kodu', 'alici', 'plaka', 'durum', 'konum', 'lat', 'lon', 'kayit_tarihi']
+        # Yeni sütunlar eklendi: telefon, email
+        expected_cols = ['takip_kodu', 'alici', 'telefon', 'email', 'plaka', 'durum', 'konum', 'lat', 'lon', 'kayit_tarihi']
         for col in expected_cols:
             if col not in df.columns:
                 df[col] = ""
         
-        # --- .0 TEMİZLİĞİ VE STR FORMATI ---
-        # Sayıları string yap ve .0 ile bitiyorsa sil
+        # .0 Temizliği
         df['takip_kodu'] = df['takip_kodu'].astype(str).str.replace(r'\.0$', '', regex=True)
         return df
     except:
-        return pd.DataFrame(columns=['takip_kodu', 'alici', 'plaka', 'durum', 'konum', 'lat', 'lon', 'kayit_tarihi'])
+        return pd.DataFrame(columns=['takip_kodu', 'alici', 'telefon', 'email', 'plaka', 'durum', 'konum', 'lat', 'lon', 'kayit_tarihi'])
 
 def tum_veriyi_guncelle(df):
     try:
@@ -135,10 +166,13 @@ if secilen_sayfa == "🔍 KARGO TAKİP":
             if not res.empty:
                 k = res.iloc[0]
                 st.success(f"DURUM: {k['durum']}")
+                
+                # Müşteri sadece gerekli bilgileri görür (Telefon/Email gizli)
                 c1, c2, c3 = st.columns(3)
                 c1.metric("Alıcı", k['alici'])
                 c2.metric("Plaka", k['plaka'])
                 c3.metric("Konum", k['konum'])
+                
                 try:
                     lat = float(str(k['lat']).replace(',', '.'))
                     lon = float(str(k['lon']).replace(',', '.'))
@@ -159,18 +193,30 @@ elif secilen_sayfa == "⚙️ OPERASYON MERKEZİ":
     # --- YENİ EKLE ---
     with tab1:
         with st.form("ekle_form", clear_on_submit=True):
-            ad = st.text_input("Müşteri Adı")
-            pl = st.text_input("Plaka")
+            col_a, col_b = st.columns(2)
+            with col_a:
+                ad = st.text_input("Müşteri Adı / Firma")
+                tel = st.text_input("Telefon No (05...)")
+            with col_b:
+                email = st.text_input("E-Posta Adresi")
+                pl = st.text_input("Plaka")
+            
             cs = st.selectbox("Çıkış Noktası", list(ROTA.keys()))
+            
             if st.form_submit_button("Kaydet"):
-                # 12 Haneli Takip Kodu Üretimi
-                # Başına '10' koyduk ki Excel bunu sayı sanıp 0 ile başlatmasın
+                # 12 Haneli Takip Kodu
                 kod = str(random.randint(100000000000, 999999999999)) 
                 
                 yeni_satir = pd.DataFrame([{
-                    'takip_kodu': kod, 'alici': ad, 'plaka': pl, 
-                    'durum': 'Yükleniyor', 'konum': cs, 
-                    'lat': ROTA[cs]['lat'], 'lon': ROTA[cs]['lon'], 
+                    'takip_kodu': kod, 
+                    'alici': ad, 
+                    'telefon': tel,
+                    'email': email,
+                    'plaka': pl, 
+                    'durum': 'Yükleniyor', 
+                    'konum': cs, 
+                    'lat': ROTA[cs]['lat'], 
+                    'lon': ROTA[cs]['lon'], 
                     'kayit_tarihi': time.strftime("%d.%m.%Y")
                 }])
                 guncel_df = pd.concat([df, yeni_satir], ignore_index=True)
